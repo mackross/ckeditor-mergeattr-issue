@@ -1,0 +1,17 @@
+{
+  "plugins": [
+    {
+      "name": "Mergeattr",
+      "className": "Mergeattr",
+      "description": "Adds text to the editor.",
+      "path": "src/mergeattr.ts",
+      "uiComponents": [
+        {
+          "name": "mergeattrButton",
+          "type": "Button",
+          "iconPath": "theme/icons/ckeditor.svg"
+        }
+      ]
+    }
+  ]
+}
