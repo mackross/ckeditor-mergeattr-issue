@@ -2,6 +2,8 @@ import { Plugin } from 'ckeditor5/src/core';
 import { ButtonView } from 'ckeditor5/src/ui';
 
 import ckeditor5Icon from '../theme/icons/ckeditor.svg';
+import type { ViewElement } from 'ckeditor5/src/engine';
+import type { ClipboardContentInsertionEvent } from 'ckeditor5/src/clipboard';
 
 export default class Mergeattr extends Plugin {
 	public static get pluginName() {
@@ -12,29 +14,40 @@ export default class Mergeattr extends Plugin {
 		const editor = this.editor;
 		const t = editor.t;
 		const model = editor.model;
+		const conversion = editor.conversion;
 
-		// Add the "mergeattrButton" to feature components.
-		editor.ui.componentFactory.add( 'mergeattrButton', locale => {
-			const view = new ButtonView( locale );
+		// add the new attribute to the schema and conversions
+		model.schema.extend( '$text', { allowAttributes: 'newAttr' } );
+		conversion.for( 'downcast' ).attributeToElement( {
+			model: 'newAttr',
+			view: ( href, { writer } ) => {
+				return writer.createAttributeElement( 'ins', { href } );
+			}
+		} );
+		conversion.for( 'upcast' ).elementToAttribute( {
+			view: {
+				name: 'ins',
+				attributes: {
+					href: true
+				}
+			},
+			model: {
+				key: 'newAttr',
+				value: ( viewElement: ViewElement ) => { return viewElement.getAttribute( 'href' ); }
+			}
+		} );
 
-			view.set( {
-				label: t( 'Mergeattr' ),
-				icon: ckeditor5Icon,
-				tooltip: true
+		editor.plugins.get( 'ClipboardPipeline' ).on<ClipboardContentInsertionEvent>( 'contentInsertion', ( evt, data ) => {
+			const random = Math.random().toString( 36 ).substring( 7 );
+
+			model.change( writer => {
+				const range = writer.createRangeIn( data.content );
+				for ( const item of range.getItems() ) {
+					if ( item.is( '$text' ) || item.is( '$textProxy' ) ) {
+						writer.setAttribute( 'newAttr', random, item );
+					}
+				}
 			} );
-
-			// Insert a text into the editor after clicking the button.
-			this.listenTo( view, 'execute', () => {
-				model.change( writer => {
-					const textNode = writer.createText( 'Hello CKEditor 5!' );
-
-					model.insertContent( textNode );
-				} );
-
-				editor.editing.view.focus();
-			} );
-
-			return view;
 		} );
 	}
 }
